@@ -1,3 +1,93 @@
+# Laboratorio 3 - Juan Pablo Morales Hasard
+
+API NestJS desplegada en Docker Desktop Kubernetes. El endpoint `/lab` devuelve
+AMBIENTE desde un ConfigMap y API_KEY desde un Secret con un valor ficticio.
+
+## Archivos de entrega
+
+- `Dockerfile` y `.dockerignore`: construccion de la imagen.
+- `entrega.yaml`: Namespace, ConfigMap, Secret, Deployment con dos replicas y Service.
+- `Jenkinsfile`: comandos de install, test, build, push y deploy.
+- `agent.yaml`: plantilla del agente Kubernetes con Node.js, kubectl y BuildKit.
+- `jenkins-rbac.yaml`: cuenta jenkins-agentes y permisos dentro del namespace.
+- `evidencias/`: salidas y capturas de la ejecucion; incluir el log completo de Jenkins.
+
+## Despliegue inicial
+
+Ejecutar desde este directorio con el contexto de Kubernetes del laboratorio:
+
+```bash
+kubectl config current-context
+kubectl apply -f entrega.yaml
+kubectl apply -f jenkins-rbac.yaml
+kubectl rollout status deployment/app-juan-pablo-morales-hasard -n ns-juan-pablo-morales-hasard
+kubectl port-forward svc/svc-juan-pablo-morales-hasard 8081:80 -n ns-juan-pablo-morales-hasard
+```
+
+En otra terminal: `curl http://localhost:8081/lab`. Se usa 8081 porque Jenkins
+ocupa 8080. API_KEY es ficticia: el endpoint y las evidencias exponen su valor.
+
+## Pipeline Jenkins
+
+El cloud se llama `kubernetes-lab3` y usa el namespace
+`ns-juan-pablo-morales-hasard`. Su credencial Kubernetes debe estar vigente.
+Guardar los tokens de registros como credenciales Username with password:
+
+| ID | Usuario | Password |
+| --- | --- | --- |
+| dockerhub-lab3 | jpmorales2985 | Token Docker Hub con lectura y escritura |
+| ghcr-lab3 | juanhasard | Token GitHub classic con write:packages |
+
+Crear una tarea Pipeline con Pipeline script from SCM, SCM Git, repositorio
+`https://github.com/juanhasard/laboratorio-tres.git`, la rama publicada y Script
+Path `Jenkinsfile`. Si el repositorio es privado, agregar una credencial de lectura.
+No aplicar `agent.yaml` con kubectl: Jenkins lo lee para crear el pod temporal.
+El agente necesita acceso a Internet. BuildKit se ejecuta como usuario 1000,
+con los ajustes de seccomp, AppArmor y proceso necesarios para el constructor
+rootless dentro del pod. Esta configuracion esta destinada al laboratorio local.
+
+El pipeline instala dependencias, ejecuta pruebas unitarias y e2e, y compila
+NestJS en build. En push, BuildKit construye y publica las etiquetas
+`juan-pablo-morales-hasard` y `3.0.0` en ambos registros:
+
+- `jpmorales2985/entrega_juan_pablo_morales`
+- `ghcr.io/juanhasard/entrega_juan_pablo_morales`
+
+Se sigue la estructura del ejemplo de clase:
+https://github.com/carlosmarind/curso-contenedores/blob/main/Jenkinsfile
+y la seleccion de herramientas de Jenkinsfile.v2. Los comandos estan dentro
+del Jenkinsfile y la plantilla externa se llama agent.yaml, como pide la tarea.
+El ejemplo completo construye y publica con buildctl-daemonless.sh; aqui se
+mantiene ese mecanismo y se personalizan registros, etiquetas y recursos.
+
+Dos diferencias respecto al profesor aprovechan la configuracion ya realizada:
+las credenciales de registros vienen de Jenkins y se escriben temporalmente
+en un config.json compartido con BuildKit, eliminado al terminar push; kubectl
+usa la cuenta jenkins-agentes montada en el pod, sin withKubeConfig ni otro plugin.
+El archivo de credenciales no esta en el repositorio ni en el contexto de build.
+
+El stage deploy actualiza la imagen del Deployment existente y reinicia sus
+pods, ya que la etiqueta del nombre se reutiliza. `imagePullPolicy: Always` en
+entrega.yaml permite descargar la imagen publicada. Luego espera el rollout y
+comprueba que `/lab` responde con ambas variables configuradas.
+Los cambios de ConfigMap, Secret o Service en entrega.yaml deben aplicarse
+manualmente con `kubectl apply -f entrega.yaml` antes de ejecutar el pipeline.
+
+## Evidencias pendientes de recopilar
+
+Guardar el Console Output completo de la ejecucion real como
+`evidencias/pipeline-jenkins.txt`, con `Finished: SUCCESS`, y descargar los
+artefactos que Jenkins archiva desde `evidencias/pipeline/`.
+La preparacion de estos archivos no acredita una ejecucion exitosa del pipeline.
+
+Capturar ademas cluster-info, nodos, pods, Deployment, Service, logs, printenv,
+ConfigMap, Secret y la consulta con port-forward y curl solicitados en la tarea.
+En los comandos de recursos del laboratorio, usar siempre el namespace
+`ns-juan-pablo-morales-hasard`. No incluir tokens de acceso en las evidencias.
+El PDF del enunciado esta excluido por .gitignore y no forma parte de la entrega.
+
+## Referencia del proyecto NestJS
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+/Laboratorio_3_-_Despliegue_CICD_en_Kubernetes.pdf
 
 # Logs
 logs

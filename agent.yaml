@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins-agentes
+  securityContext:
+    fsGroup: 1000
+  containers:
+    - name: node-tool
+      image: node:22-bookworm
+      command: ["cat"]
+      tty: true
+      volumeMounts:
+        - name: registry-config
+          mountPath: /docker-config
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "1000m"
+          memory: "1Gi"
+
+    - name: kubectl-tool
+      image: alpine/k8s:1.36.1
+      command: ["cat"]
+      tty: true
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "1000m"
+          memory: "512Mi"
+
+    - name: buildkit
+      image: moby/buildkit:rootless
+      command: ["cat"]
+      tty: true
+      env:
+        - name: DOCKER_CONFIG
+          value: /docker-config
+        - name: BUILDKITD_FLAGS
+          value: --oci-worker-no-process-sandbox
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: Unconfined
+        appArmorProfile:
+          type: Unconfined
+      volumeMounts:
+        - name: registry-config
+          mountPath: /docker-config
+          readOnly: true
+        - name: buildkit-data
+          mountPath: /home/user/.local/share/buildkit
+      resources:
+        requests:
+          cpu: "1000m"
+          memory: "256Mi"
+        limits:
+          cpu: "2000m"
+          memory: "2Gi"
+  volumes:
+    - name: registry-config
+      emptyDir:
+        medium: Memory
+    - name: buildkit-data
+      emptyDir: {}
