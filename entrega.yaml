@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-juan-pablo-morales-hasard
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-juan-pablo-morales-hasard
+  namespace: ns-juan-pablo-morales-hasard
+data:
+  AMBIENTE: "kubernetes-local"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-juan-pablo-morales-hasard
+  namespace: ns-juan-pablo-morales-hasard
+type: Opaque
+stringData:
+  API_KEY: "clave-prueba-juan-pablo"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-juan-pablo-morales-hasard
+  namespace: ns-juan-pablo-morales-hasard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: juan-pablo-morales-hasard
+  template:
+    metadata:
+      labels:
+        app: juan-pablo-morales-hasard
+    spec:
+      containers:
+        - name: api
+          image: jpmorales2985/entrega_juan_pablo_morales:juan-pablo-morales-hasard
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: config-juan-pablo-morales-hasard
+            - secretRef:
+                name: secret-juan-pablo-morales-hasard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-juan-pablo-morales-hasard
+  namespace: ns-juan-pablo-morales-hasard
+spec:
+  selector:
+    app: juan-pablo-morales-hasard
+  ports:
+    - port: 80
+      targetPort: 3000
+  type: ClusterIP
